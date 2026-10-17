@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {analyze} from '../src/analysis.js';
+const paper='These seven original words form a matching passage in this student project with additional original discussion.';
+test('duplicate sources do not double count',()=>{const r=analyze(paper,[{text:paper},{text:paper}]);assert.equal(r.similarity,100);assert.equal(r.matchedWords,r.wordCount);});
+test('no references means not checked',()=>assert.equal(analyze(paper).similarity,null));
+test('partial matches preserve provenance',()=>{const r=analyze(paper,[{text:'These seven original words form a matching',url:'https://en.wikipedia.org/?curid=1'}]);assert.equal(r.matchedWords,7);assert.equal(r.sources[0].passages[0].text,'These seven original words form a matching');assert.equal(r.sources[0].url,'https://en.wikipedia.org/?curid=1');});
+test('unrelated sources produce zero',()=>{const r=analyze(paper,[{text:'A completely different reference with nothing shared from the provided work.'}]);assert.equal(r.similarity,0);assert.equal(r.writing.enoughText,false);});
+test('Unicode case normalization preserves offsets',()=>{const text='İstanbul university examines seven unique words inside this project with additional detailed analysis.';const r=analyze(text,[{text}]);assert.equal(r.similarity,100);assert.equal(r.sources[0].passages[0].text,text.slice(0,-1));});
+test('invalid inputs rejected',()=>{for(const value of [null,'short','x'.repeat(200001)])assert.throws(()=>analyze(value));assert.throws(()=>analyze(paper,Array(21).fill({text:paper})));});
