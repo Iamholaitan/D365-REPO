@@ -1,10 +1,21 @@
-# Originality — Netlify edition
+# VerifyScholar — free, no-sign-up batch checker
 
-A free-to-run project-paper comparison app with experimental writing-style indicators. No paid API is required. Document extraction and similarity analysis run in the browser; public-source discovery uses a Netlify function.
+Upload up to 20 papers at once, click **Check all papers**, and review a separate evidence report for each. No accounts, subscriptions, paid detection APIs, or manual source-by-source uploads are required. Product naming is configurable in `src/config.js`.
 
-## Develop
+## What works
 
-Use Node.js 22 or newer:
+- Multi-file PDF, DOCX, TXT and Markdown import, drag-and-drop, per-file extraction status/errors and pasted text.
+- Up to 20 optional reference files selected together. Optional comparisons within a batch, without sharing papers outside the browser.
+- Automatic public-source discovery: up to three keyword queries per paper search **English Wikipedia**, retrieving up to five article extracts per query and adding them directly to comparison. Sources are deduplicated. Search failures, partial coverage, empty results, and local-only analysis are distinct report states.
+- Exact matching with source and submitted-text offsets, highlighted document text, side-by-side evidence, source links and retrieval dates.
+- Configurable 7/10/15/20-word minimum and optional exclusions for double-quoted text and a final References/Bibliography/Works Cited section. Denominator is eligible word count; overlapping matches count once. Excluded ranges are reviewable. These are heuristic formatting rules, not citation validation.
+- Actual downloadable PDF and text reports. AI authorship is explicitly unavailable; no invented AI percentages or style-based accusations.
+- Opt-in IndexedDB history on the current browser profile: reopen reports, reuse papers, delete individually or clear all saved data. No database account or external document storage.
+- Analysis runs in a browser worker. Documents are processed sequentially with progress and isolated failures.
+
+## Run and test
+
+Node 22 or newer:
 
 ```sh
 npm ci
@@ -12,40 +23,45 @@ npm test
 npm run dev
 ```
 
-The development server uses port 8888 and serves the production build and public-search function. Restart after edits. `PORT` overrides the port.
+The dev server uses port 8888; set `PORT` to override. Restart after editing. `npm run build` builds `dist` and bundles extraction tools, comparison worker and PDF export with no runtime CDN dependency.
 
-## Deploy to Netlify
+Optional browser regression suite (requires Python Playwright and Chromium already installed):
 
-1. Push this project, including `package-lock.json` and `netlify.toml`, to your GitHub repository.
-2. In Netlify, add a project by importing that GitHub repository.
-3. Netlify reads the included settings: build `npm run build`, publish directory `dist`, functions directory `netlify/functions`, Node 22.
-4. Deploy. No API keys or environment secrets are needed.
-5. Verify a document upload, compare identical paper/reference text (expect 100%), then search for `education`, add an article, and compare again.
+```sh
+python tests/browser_mvp.py
+```
 
-Use Git-connected deployment. Uploading only `dist` through static drag-and-drop does not deploy the web-search function.
+`TEST_URL` and `CHROMIUM_PATH` can override the local test server and Chromium path. Browser tests mock external provider responses; they do not establish live Wikipedia availability. Tests exercise batch import, failure isolation, automatic source inclusion, worker comparison, highlights, evidence, PDF download, mobile layout, retention/reload, reuse, deletion, local-only checks and failed discovery. Node tests cover overlap scoring, evidence offsets, exclusions and source-discovery outcomes.
 
-The app needs no paid APIs. Netlify's free plan has usage limits and its current pricing/terms apply; unlimited free hosting is not guaranteed. This task has not deployed to your account.
+## Netlify
 
-## Public web coverage
+The configured target supplied by the owner is `https://plagarismmba.netlify.app/`.
 
-- **Find articles** searches English Wikipedia and returns up to five extracts of up to 18,000 characters each. Click **Add to comparison** to include a result. This is limited public-web discovery, not a complete internet or automatic paper-wide scan.
-- **Search wider web** opens an exact-phrase Google search. Read relevant pages and paste their text as references. Results are not automatically fetched or included in scores.
-- Only the search query you explicitly enter is sent to a provider. Paper text and uploaded documents are processed in the browser, without document storage or external AI services. Netlify/provider request logging and provider policies apply to searches.
-- Source URLs appear with matches and in downloaded reports. Missing, failed, and empty searches are not evidence of originality.
+Connect the `main` branch of `Iamholaitan/D365-REPO` to that Netlify site. The included `netlify.toml` specifies:
 
-## Turnitin
+- Build: `npm run build`
+- Publish: `dist`
+- Functions: `netlify/functions`
+- Node: 22
 
-**Not connected.** There is no free public endpoint for Turnitin's private databases. An institutional agreement and authorized API access are required; student logins alone do not provide this. A future integration needs the approved API product, tenant endpoint, and server-side credentials. Never put credentials in browser JavaScript or Git. No mock score or undocumented Turnitin integration is included.
+No application environment secrets are required. A Git-connected site redeploys after a push if automatic deploys are enabled. A successful Git push alone does not establish a successful Netlify deployment. Verify the latest commit in Netlify's Deploys panel, open the site, then test a batch upload and public-source discovery. Static drag-and-drop of `dist` alone omits the server function.
 
-## Limitations
+No paid APIs are needed. Netlify's current free-plan limits still apply; unlimited free hosting is not guaranteed. The anonymous public function only calls a fixed provider, validates query lengths and has upstream timeouts. Host quotas and monitoring are needed for large public usage; no global distributed rate limiter is implemented.
 
-- TXT, Markdown, DOCX, and text-based PDFs: 12 MB maximum, 200 PDF pages, 200,000 extracted characters. Scans need separate OCR.
-- Similarity counts words in exact matching sequences of seven or more words against added sources. Duplicate overlaps count once. Quotations/citations count; paraphrases are not detected.
-- AI-writing indicators are unvalidated sentence-length and transition heuristics, **not a trained detector or AI-authorship probability**. Do not use them for academic penalties. At least 200 words are required to display the assessment.
-- Similarity is not a plagiarism verdict; zero overlap does not prove originality.
+## Data and privacy
 
-## Validation
+Original file bytes are not uploaded or retained. Extracted text is processed in the browser. With automatic discovery enabled, clicking Check sends up to three short topic queries per paper to the Netlify function and English Wikipedia. This may reveal document topics; turn it off for sensitive work. The full paper is not sent to the provider. Provider and hosting access logs/policies apply.
 
-`npm test` checks the browser comparison engine and Netlify function with mocked provider responses. `npm run build` bundles PDF/DOCX tools and the PDF worker, with no runtime CDN dependency. Live provider access and Netlify deployment must also be verified in the deployed environment.
+Device history is off by default. If enabled, the `verifyscholar-local` IndexedDB database stores records in its `documents` store: `id`, `name`, `text`, `createdAt`, `state`, and optional report containing source metadata/evidence. Anyone using the same browser profile can access it. It is not encrypted institutional storage or cross-device sync. Disabling retention stops future saves, but does not erase existing records. Delete removes stored records; clear-all also empties the active queue. Previously downloaded reports remain on disk. Original binary files are never stored by the app.
 
-The previous Python implementation is retained for reference, but is not the Netlify runtime. Use the Node workflow for the updated UI.
+## Honest limitations and remaining requirements
+
+- **Not a Turnitin connection or whole-web scanner.** No authorized API access was supplied. Wikipedia is a small public subset; matching against sampled extracts cannot prove originality.
+- Exact matches only. Near-duplicate, semantic matching, embeddings and private institutional repositories are not implemented.
+- AI detection is not available because no validated model is connected. No detector accuracy or probability is claimed.
+- Scanned PDFs need external OCR. Limits: 12 MB/file, 200 PDF pages, 200,000 extracted characters/document. No malware scanner is included.
+- Citation validation, institutional roles, shared server database, assignments, auditing, commercial billing, compliance certification and OCR remain out of scope for this no-sign-up iteration.
+- PDF export uses standard PDF fonts; some non-Latin characters may not render correctly. The UTF-8 text export preserves them.
+- Similarity is not evidence of misconduct by itself. Review quotations, references and context.
+
+See `docs/MVP.md` for the architecture, local schema and phased requirements checklist. The old Python server is retained for reference and is not the runtime for the current UI.
